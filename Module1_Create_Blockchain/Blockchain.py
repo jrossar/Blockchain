@@ -29,11 +29,39 @@ class Blockchain:
         check_proof = False
         while check_proof is False:
             #Equation inside hashlib must be asymmetric, the more complicated the better
-            hash_operation = hashlib.sha256(str(new_proof**2 - prev_proof**2).encode()).hexdigest()
-            if hash_operation[:4] is '0000':
+            hash_val = hash_operation(prev_proof, new_proof)
+            if hash_val[:4] == '0000':
                 check_proof = True
             else:
                 new_proof += 1
         return new_proof
+
+    def hash_operation(self, prev_proof, proof):
+        return hashlib.sha256(str(proof**2 - prev_proof**2).encode()).hexdigest()
+
+    
+    def hash(self, block):
+        encoded_block = json.dumps(block, sort_keys = True).encode()
+        return hashlib.sha256(encoded_block).hexdigest()
+
+    def is_chain_valid(self, chain):
+        previous_block = chain[0]
+        block_num = 0
+        while block_num < len(chain):
+            block = chain[block_num]
+            if block['prev_hash'] != self.hash(previous_block):
+                return False
+            previous_proof = previous_block['proof']
+            proof = block['proof']
+            hash_val = hash_operation(previous_proof, proof)
+            if hash_val[:4] != '0000':
+                return False
+            previous_block = block
+            block_num += 1
+        return True
+             
+
+            
+
 
 #Part 2 - Mining our Blockchain
