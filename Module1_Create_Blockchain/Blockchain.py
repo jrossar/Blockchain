@@ -10,17 +10,17 @@ class Blockchain:
         #to append the different blocks that are mined later
         self.chain = []
         #prev_has for genesis is arbritrary
-        self.genesis = create_block(proof = 1, prev_hash = '0')
+        self.genesis = self.create_block(proof = 1, prev_hash = '0')
     
     def create_block(self, proof, prev_hash):
-        block = {'index': len(self.chain) + 1,
+        block = {'index':      len(self.chain) + 1,
                  'time_stamp': str(datetime.datetime.now()), 
-                 'proof': proof,
-                 'prev_hash': prev_hash}
+                 'proof':      proof,
+                 'prev_hash':  prev_hash}
         self.chain.append(block)
         return block
 
-    def get_last_block(self):
+    def get_prev_block(self):
         return(self.chain[-1])
 
     #Proof of Work: challenging to find hard to verify
@@ -29,7 +29,7 @@ class Blockchain:
         check_proof = False
         while check_proof is False:
             #Equation inside hashlib must be asymmetric, the more complicated the better
-            hash_val = hash_operation(prev_proof, new_proof)
+            hash_val = self.hash_operation(prev_proof, new_proof)
             if hash_val[:4] == '0000':
                 check_proof = True
             else:
@@ -53,15 +53,43 @@ class Blockchain:
                 return False
             previous_proof = previous_block['proof']
             proof = block['proof']
-            hash_val = hash_operation(previous_proof, proof)
+            hash_val = self.hash_operation(previous_proof, proof)
             if hash_val[:4] != '0000':
                 return False
             previous_block = block
             block_num += 1
         return True
              
-
-            
-
-
 #Part 2 - Mining our Blockchain
+
+#Creating a Web App
+app = Flask(__name__)
+blockchain = Blockchain()
+print(blockchain.chain)
+
+#Mining New Block
+@app.route('/mine_block', methods = ['GET'])
+def mine_block():
+    prev_proof = blockchain.get_prev_block()['proof']
+    new_proof = blockchain.proof_of_work(prev_proof)
+    previous_hash = blockchain.hash(blockchain.get_prev_block())
+    block = blockchain.create_block(new_proof, previous_hash)
+    response = {'message': 'Congratulations you just mined a block!',
+                'index': block['index'],
+                'timestamp': block['time_stamp'],
+                'proof': block['proof'],
+                'previous_hash': block['prev_hash']}
+    print(response)
+    #200 is an http status code for success
+    return jsonify(response), 200
+
+#Getting the full Blockchain
+@app.route('/get_chain', methods = ['GET'])
+def get_chain():
+    response = {'chain':  blockchain.chain, 
+                'length': len(blockchain.chain)}
+    return jsonify(response), 200
+
+#Running the App
+#From flask's quickstart guide, we can use 0.0.0.0 to make the app public, port 5000 also from the quickstart guide
+app.run(host = '0.0.0.0', port = 5000)
