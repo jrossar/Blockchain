@@ -11,6 +11,7 @@ class Blockchain:
         self.chain = []
         #prev_has for genesis is arbritrary
         self.genesis = self.create_block(proof = 1, prev_hash = '0')
+        self.genesis_hash = self.hash(self.genesis)
     
     def create_block(self, proof, prev_hash):
         block = {'index':      len(self.chain) + 1,
@@ -30,14 +31,16 @@ class Blockchain:
         while check_proof is False:
             #Equation inside hashlib must be asymmetric, the more complicated the better
             hash_val = self.hash_operation(prev_proof, new_proof)
-            if hash_val[:4] == '0000':
-                check_proof = True
+            if hash_val[:6] == '000000':
+               check_proof = True
             else:
-                new_proof += 1
+               new_proof += 1
         return new_proof
 
     def hash_operation(self, prev_proof, proof):
-        return hashlib.sha256(str(proof**2 - prev_proof**2).encode()).hexdigest()
+        y = 2
+        y = y^3
+        return hashlib.sha256(str((4^13*y-proof**2) - prev_proof**2*22/y).encode()).hexdigest()
 
     
     def hash(self, block):
@@ -48,18 +51,21 @@ class Blockchain:
         previous_block = chain[0]
         block_num = 0
         while block_num < len(chain):
+            if block_num == 0 and self.hash(previous_block) == self.genesis_hash:
+               block_num += 1
+               continue
             block = chain[block_num]
             if block['prev_hash'] != self.hash(previous_block):
-                return False
+               return False
             previous_proof = previous_block['proof']
             proof = block['proof']
             hash_val = self.hash_operation(previous_proof, proof)
             if hash_val[:4] != '0000':
-                return False
+               return False
             previous_block = block
             block_num += 1
         return True
-             
+        
 #Part 2 - Mining our Blockchain
 
 #Creating a Web App
@@ -88,6 +94,15 @@ def mine_block():
 def get_chain():
     response = {'chain':  blockchain.chain, 
                 'length': len(blockchain.chain)}
+    return jsonify(response), 200
+
+#Validating the blockchain
+@app.route('/chain_is_valid', methods = ['GET'])
+def is_valid():
+    if blockchain.is_chain_valid(blockchain.chain) == True:
+       response =  'Yes! The chain is valid!'
+    else:
+       response = 'No the chain has been comprimised'
     return jsonify(response), 200
 
 #Running the App
